@@ -1,0 +1,29 @@
+{
+    "name": "mpietrucha/error-raporting",
+    "description": "Error raporting fluent handler for PHP",
+    "type": "liblary",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Mpietrucha\\Php\\Error\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "authors": [
+        {
+            "name": "Michał Pietrucha",
+            "email": "michal.pietrucha@off-site.pl"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.1",
+        "mpietrucha/support": "^1.0",
+        "illuminate/support": "^10.7"
+    },
+    "require-dev": {
+        "symfony/var-dumper": "^6.2"
+    }
+}
