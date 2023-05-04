@@ -21,8 +21,6 @@ class Reporting
 
     protected ?Stringable $phpVersion = null;
 
-    protected static ?Collection $errors = null;
-
     protected const WHILE_BAG = 'while';
 
     public function __construct(protected ?string $version = null)
@@ -54,7 +52,11 @@ class Reporting
 
     public static function errors(): Collection
     {
-        return self::$errors ?? collect();
+        if (! self::$errors) {
+            return collect();
+        }
+
+        return Error::clear(self::WHILE_BAG)->whenEmpty(fn () => Error::clear());
     }
 
     public function while(Closure $callback): mixed
@@ -68,8 +70,6 @@ class Reporting
         $this->builder = $this->origin;
 
         $this->handler->bag()->restore();
-
-        self::$errors = Error::clear(self::WHILE_BAG);
 
         return $returnValue;
     }
