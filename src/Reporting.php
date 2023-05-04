@@ -50,6 +50,22 @@ class Reporting
         return $this;
     }
 
+    public static function withFreshAllErrors(): void
+    {
+        self::withFreshErrors(true);
+    }
+
+    public static function withFreshErrors(bool $all = false): void
+    {
+        if ($all) {
+            self::allErrors();
+
+            return;
+        }
+
+        self::errors();
+    }
+
     public static function errors(): Collection
     {
         return self::allErrors(self::WHILE_BAG);
