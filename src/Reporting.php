@@ -52,11 +52,12 @@ class Reporting
 
     public static function errors(): Collection
     {
-        if (! self::$errors) {
-            return collect();
-        }
+        return self::allErrors(self::WHILE_BAG);
+    }
 
-        return Error::clear(self::WHILE_BAG)->whenEmpty(fn () => Error::clear());
+    public static function allErrors(?string $bag = null): Collection
+    {
+        return Error::clear($bag);
     }
 
     public function while(Closure $callback): mixed
