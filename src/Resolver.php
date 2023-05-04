@@ -44,6 +44,7 @@ class Resolver
     public static function operators(): array
     {
         return self::$operators ??= [
+            'disable' => fn (int $current, int $level) => $level,
             'without' => fn (int $current, int $level) => $current & ~ $level
         ];
     }
@@ -89,7 +90,7 @@ class Resolver
 
         $this->operator = $operator;
 
-        $this->level = $level->after($this->operator ?? '')->snake();
+        $this->level = $level->after($this->operator ?? '')->whenEmpty(fn () => $level)->snake();
 
         return $this;
     }

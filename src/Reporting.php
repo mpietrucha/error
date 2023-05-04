@@ -4,7 +4,9 @@ namespace Mpietrucha\Php\Error;
 
 use Closure;
 use Exception;
+use Mpietrucha\Support\Types;
 use Illuminate\Support\Stringable;
+use Illuminate\Support\Collection;
 use Mpietrucha\Support\Concerns\HasFactory;
 
 class Reporting
@@ -15,44 +17,75 @@ class Reporting
 
     protected int $builder;
 
+    protected Handler $handler;
+
     protected ?Stringable $phpVersion = null;
+
+    protected static ?Collection $errors = null;
+
+    protected const WHILE_BAG = 'while';
 
     public function __construct(protected ?string $version = null)
     {
         $this->origin = $this->builder = error_reporting();
+
+        $this->handler = Handler::create();
     }
 
     public function __destruct()
     {
-        $this->set($this->builder);
+        $this->commit();
     }
 
     public function __call(string $method, array $arguments): self
     {
         $resolver = Resolver::create($method);
 
-        if (! $level = $resolver->level()) {
+        if (Types::null($level = $resolver->level())) {
             throw new Exception("Method $method not found.");
         }
 
         if ($this->shouldRunInThisPHPVersion()) {
-            $callback = $resolver->callback();
-
-            $this->builder = $callback($this->builder, $level);
+            $this->builder = $resolver->callback()($this->builder, $level);
         }
 
         return $this;
     }
 
+    public static function errors(): Collection
+    {
+        return self::$errors ?? collect();
+    }
+
     public function while(Closure $callback): mixed
     {
-        $this->set($this->builder);
+        $this->commit();
+
+        $this->handler->bag(self::WHILE_BAG);
 
         $returnValue = $callback();
 
         $this->builder = $this->origin;
 
+        $this->handler->bag()->restore();
+
+        self::$errors = Error::clear(self::WHILE_BAG);
+
         return $returnValue;
+    }
+
+    public function bypass(): self
+    {
+        $this->handler->bypass();
+
+        return $this;
+    }
+
+    public function commit(): void
+    {
+        $this->set($this->builder);
+
+        $this->handler->register($this->builder);
     }
 
     protected function set(int $level): void
