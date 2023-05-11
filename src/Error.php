@@ -1,6 +1,6 @@
 <?php
 
-namespace Mpietrucha\Php\Error;
+namespace Mpietrucha\Error;
 
 use Exception;
 use Mpietrucha\Support\Macro;
