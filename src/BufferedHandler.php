@@ -43,7 +43,9 @@ class BufferedHandler
     {
         $this->restore();
 
-        set_error_handler($this->callback(...), ReportingLevelResolver::without($this->level, $level));
+        $this->level = ReportingLevelResolver::without($this->level, $level);
+
+        set_error_handler($this->callback(...));
 
         $this->shouldRestore = true;
     }
@@ -61,12 +63,21 @@ class BufferedHandler
 
     protected function callback(): bool
     {
-        Error::add($arguments = func_get_args(), $this->bag);
+        $arguments = func_get_args();
+
+        if ($this->shouldHandleThisError(...$arguments)) {
+            Error::add($arguments, $this->bag);
+        }
 
         if ($this->propagate) {
-            return value($this->next, ...$arguments) ?? false;
+            return value($this->next, ...$arguments);
         }
 
         return true;
+    }
+
+    protected function shouldHandleThisError(int $level): bool
+    {
+        return $level < $this->level;
     }
 }
