@@ -3,7 +3,7 @@
 namespace Mpietrucha\Error;
 
 use Mpietrucha\Cli\Cli;
-use Mpietrucha\Cli\Package;
+use Mpietrucha\Support\Package;
 use Illuminate\Support\Collection;
 use Mpietrucha\Support\Concerns\HasFactory;
 use Whoops\Run as Provider;
