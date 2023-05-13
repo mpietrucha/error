@@ -1,6 +1,6 @@
 <?php
 
-namespace Mpietrucha\Support;
+namespace Mpietrucha\Error;
 
 use Mpietrucha\Cli\Cli;
 use Mpietrucha\Cli\Package;
