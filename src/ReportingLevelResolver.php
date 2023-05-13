@@ -39,22 +39,26 @@ class ReportingLevelResolver
 
         $level = str($method);
 
-        $handler = self::operators()->filter(fn (Closure $handler, string $operator) => $level->startsWith($operator));
+        $builder = self::operators()->filter(fn (Closure $handler, string $operator) => $level->startsWith($operator));
 
-        $operator = Caller::create($handler->first())->add(self::$defaultOperator)->add(function (int $current, int $level) {
+        $handler = Caller::create($builder->first())->add(self::$defaultOperator)->add(function (int $current, int $level) {
             return $current | $level;
         })->get();
 
-        $level = $level->after($handler->keys()->first() ?? '')->snake()->whenEmpty(
-            fn (string $level) => $currentLevel,
+        $level = $level->after($builder->keys()->first() ?? '')->snake()->whenEmpty(
+            fn (string $level) => Arr::get(self::LEVELS, $builder->keys()->first(), $currentLevel),
             fn (string $level) => Arr::get(self::LEVELS, $level)
         );
 
-        if (Types::null($level)) {
+        if (! Types::int($level)) {
             throw new Exception("Method $method not found");
         }
 
-        return $operator($currentLevel, $level);
+        if (! $currentLevel) {
+            throw new Exception('Invalid level argument');
+        }
+
+        return $handler($currentLevel, $level);
     }
 
     public static function operators(): Collection
