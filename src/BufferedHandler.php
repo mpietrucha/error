@@ -78,7 +78,7 @@ class BufferedHandler
 
     protected function shouldHandleThisError(int $level): bool
     {
-        return $level < $this->level;
+        return $level >= $this->level;
     }
 
     protected function next(): Closure
