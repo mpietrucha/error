@@ -4,7 +4,7 @@ namespace Mpietrucha\Error;
 
 use Mpietrucha\Support\Concerns\HasFactory;
 
-class RestorableHandler
+class BufferedHandler
 {
     use HasFactory;
 
@@ -14,14 +14,16 @@ class RestorableHandler
 
     protected bool $shouldRestore = false;
 
+    protected const LEVEL_MODE = 'without';
+
     public function __construct(protected int $level = E_ALL)
     {
         $this->register($level);
     }
 
-    public function bypass(): self
+    public function propagate(): self
     {
-        $this->bypass = true;
+        $this->propagate = true;
 
         return $this;
     }
@@ -37,11 +39,7 @@ class RestorableHandler
     {
         $this->restore();
 
-        set_error_handler(function () {
-            Error::add(func_get_args(), $this->bag);
-
-            return ! $this->bypass;
-        }, Resolver::create('without')->callback()($this->level, $level));
+        set_error_handler($this->callback(...), $this->level($level));
 
         $this->shouldRestore = true;
     }
@@ -53,5 +51,19 @@ class RestorableHandler
         }
 
         restore_error_handler();
+
+        $this->shouldRestore = false;
+    }
+
+    protected function callback(): bool
+    {
+        Error::add(func_get_args(), $this->bag);
+
+        return ! $this->propagate;
+    }
+
+    protected function level(int $level): int
+    {
+        return ReporingLevelResolver::create(self::LEVEL_MODE)->callback()($this->level, $level);
     }
 }

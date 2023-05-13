@@ -7,7 +7,7 @@ use Mpietrucha\Support\Concerns\HasFactory;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
-class Resolver
+class ReporingLevelResolver
 {
     use HasFactory;
 

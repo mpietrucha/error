@@ -4,8 +4,8 @@ namespace Mpietrucha\Error;
 
 use Closure;
 use Exception;
+use Mpietrucha\Support\Macro;
 use Mpietrucha\Support\Types;
-use Illuminate\Support\Stringable;
 use Illuminate\Support\Collection;
 use Mpietrucha\Support\Concerns\HasFactory;
 
@@ -17,17 +17,17 @@ class Reporting
 
     protected int $builder;
 
-    protected RestorableHandler $handler;
-
-    protected ?Stringable $phpVersion = null;
+    protected BufferedHandler $handler;
 
     protected const WHILE_BAG = 'while';
 
     public function __construct(protected ?string $version = null)
     {
-        $this->origin = $this->builder = error_reporting();
+        $this->handler = RestorableHandler::create(
+            $this->origin = $this->builder = error_reporting()
+        );
 
-        $this->handler = RestorableHandler::create();
+        Macro::bootstrap();
     }
 
     public function __destruct()
@@ -37,7 +37,7 @@ class Reporting
 
     public function __call(string $method, array $arguments): self
     {
-        $resolver = Resolver::create($method);
+        $resolver = ReporingLevelResolver::create($method);
 
         if (Types::null($level = $resolver->level())) {
             throw new Exception("Method $method not found.");
@@ -76,6 +76,13 @@ class Reporting
         return Error::clear($bag);
     }
 
+    public function propagate(): self
+    {
+        $this->handler->propagate();
+
+        return $this;
+    }
+
     public function while(Closure $callback): mixed
     {
         $this->commit();
@@ -89,13 +96,6 @@ class Reporting
         $this->handler->bag()->restore();
 
         return $returnValue;
-    }
-
-    public function bypass(): self
-    {
-        $this->handler->bypass();
-
-        return $this;
     }
 
     public function commit(): void
@@ -116,6 +116,6 @@ class Reporting
             return true;
         }
 
-        return ($this->phpVersion ??= str(phpversion()))->is($this->version);
+        return str()->php()->is($this->version);
     }
 }
