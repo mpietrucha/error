@@ -2,6 +2,8 @@
 
 namespace Mpietrucha\Error;
 
+use Closure;
+use Mpietrucha\Support\Types;
 use Mpietrucha\Support\Concerns\HasFactory;
 
 class BufferedHandler
@@ -18,9 +20,7 @@ class BufferedHandler
 
     public function __construct(protected int $level = E_ALL)
     {
-        $this->next = set_error_handler(function () {});
-
-        restore_error_handler();
+        $this->next = $this->next();
 
         $this->register($level);
     }
@@ -79,5 +79,28 @@ class BufferedHandler
     protected function shouldHandleThisError(int $level): bool
     {
         return $level < $this->level;
+    }
+
+    protected function next(): Closure
+    {
+        $handler = set_error_handler(function () {
+            return false;
+        });
+
+        restore_error_handler();
+
+        if (! $handler) {
+            return fn () => false;
+        }
+
+        if (Types::array($handler)) {
+            return function () use ($handler) {
+                [$handler, $method] = $handler;
+
+                return $handler->$method(...func_get_args());
+            };
+        }
+
+        return $handler;
     }
 }
