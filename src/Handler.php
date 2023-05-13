@@ -34,10 +34,10 @@ class Handler
         return self::$handlers ??= collect();
     }
 
-    public function handler(HandlerInterface $handler): HandlerInterface
+    public function handler(HandlerInterface $handler, ?string $key = null): HandlerInterface
     {
         if (! self::handlers()->has($handler::class)) {
-            self::handlers()->put($handler::class, $handler);
+            self::handlers()->put($key ?? $handler::class, $handler);
         }
 
         return $handler;
@@ -71,7 +71,7 @@ class Handler
             return null;
         }
 
-        return self::handler(new WebHandler);
+        return self::handler(new WebHandler, 'web');
     }
 
     public function cli(): ?CliHandler
@@ -80,6 +80,6 @@ class Handler
             return null;
         }
 
-        return self::handler(new CliHandler);
+        return self::handler(new CliHandler, 'cli');
     }
 }
