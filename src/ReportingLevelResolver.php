@@ -54,7 +54,7 @@ class ReportingLevelResolver
             throw new Exception("Method $method not found");
         }
 
-        if (! $currentLevel) {
+        if (Types::null($currentLevel)) {
             throw new Exception('Invalid level argument');
         }
 
