@@ -1,5 +1,5 @@
 {
-    "name": "mpietrucha/error-raporting",
+    "name": "mpietrucha/error",
     "description": "Error raporting fluent handler for PHP",
     "type": "liblary",
     "license": "MIT",
