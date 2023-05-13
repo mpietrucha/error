@@ -39,11 +39,18 @@ class BufferedHandler
         return $this;
     }
 
+    public function level(): self
+    {
+        if ($level !== $this->level) {
+            $this->level = ReportingLevelResolver::without($this->level, $level);
+        }
+
+        return $this;
+    }
+
     public function register(int $level): void
     {
-        $this->restore();
-
-        $this->level = ReportingLevelResolver::without($this->level, $level);
+        $this->level($level)->restore();
 
         set_error_handler($this->callback(...));
 
