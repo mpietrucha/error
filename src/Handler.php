@@ -24,14 +24,33 @@ class Handler
         Package::enshure(Cli::class, 'mpietrucha/cli');
     }
 
+    public function __destruct()
+    {
+        $this->register();
+    }
+
     public static function handlers(): Collection
     {
         return self::$handlers ??= collect();
     }
 
+    public function handler(HandlerInterface $handler): HandlerInterface
+    {
+        if (! self::handlers()->has($handler::class)) {
+            self::handlers()->put($handler::class, $handler);
+        }
+
+        return $handler;
+    }
+
+    public static function provider(): Provider
+    {
+        return self::$provider ??= new Provider;
+    }
+
     public function register(): Provider
     {
-        self::$provider ??= new Provider;
+        self::provider()->clearHandlers();
 
         if (! self::handlers()->count()) {
             $this->web();
@@ -40,36 +59,27 @@ class Handler
         }
 
         self::handlers()->each(function (HandlerInterface $handler) {
-            self::$provider->pushHandler($handler);
+            self::provider()->pushHandler($handler);
         });
 
-        return self::$provider->register();
-    }
-
-    public function __destruct()
-    {
-        $this->register();
+        return self::provider()->register();
     }
 
     public function web(): ?WebHandler
     {
-        if (Cli::inside() | self::handlers()->has(WebHandler::class)) {
-            return self::handlers()->get(WebHandler::class);
+        if (Cli::inside()) {
+            return null;
         }
 
-        self::handlers()->put(WebHandler::class, $handler = new WebHandler);
-
-        return $handler;
+        return self::handler(new WebHandler);
     }
 
     public function cli(): ?CliHandler
     {
-        if (! Cli::inside() || self::handlers()->has(CliHandler::class)) {
-            return self::handlers()->get(CliHandler::class);
+        if (! Cli::inside()) {
+            return null;
         }
 
-        self::handlers()->put(CliHandler::class, $handler = new CliHandler);
-
-        return $handler;
+        return self::handler(new CliHandler);
     }
 }
