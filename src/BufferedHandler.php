@@ -39,7 +39,7 @@ class BufferedHandler
         return $this;
     }
 
-    public function level(): self
+    public function level(int $level): self
     {
         if ($level !== $this->level) {
             $this->level = ReportingLevelResolver::without($this->level, $level);
