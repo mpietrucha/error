@@ -46,7 +46,7 @@ class ReportingLevelResolver
         })->get();
 
         $level = $level->after($builder->keys()->first() ?? '')->snake()->whenEmpty(
-            fn (string $level) => Arr::get(self::LEVELS, $builder->keys()->first(), $currentLevel),
+            fn (string $level) => Arr::get(self::LEVELS, $builder->keys()->first(), $defaultLevel),
             fn (string $level) => Arr::get(self::LEVELS, $level)
         );
 
