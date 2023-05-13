@@ -10,7 +10,7 @@ class BufferedHandler
 
     protected ?string $bag = null;
 
-    protected bool $bypass = false;
+    protected bool $propagate = false;
 
     protected bool $shouldRestore = false;
 
