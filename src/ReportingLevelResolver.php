@@ -6,7 +6,6 @@ use Closure;
 use Exception;
 use Mpietrucha\Support\Types;
 use Illuminate\Support\Arr;
-use Mpietrucha\Support\Caller;
 use Illuminate\Support\Collection;
 
 class ReportingLevelResolver
@@ -41,21 +40,17 @@ class ReportingLevelResolver
 
         $handler = self::operators()->filter(fn (Closure $handler, string $operator) => $level->startsWith($operator));
 
-        if (! $handler->count()) {
-            throw new Exception("Method $method not found");
-        }
-
         $operator = Caller::create($handler->first())->add(self::$defaultOperator)->add(function (int $current, int $level) {
             return $current | $level;
         })->get();
 
         $level = $level->after($handler->keys()->first() ?? '')->snake()->whenEmpty(
-            fn () => $defaultLevel,
+            fn (string $level) => Arr::get(self::LEVELS, $level, $currentLevel),
             fn (string $level) => Arr::get(self::LEVELS, $level)
         );
 
         if (Types::null($level)) {
-            throw new Exception('Cannot negotiate valid level');
+            throw new Exception("Method $method not found");
         }
 
         return $operator($currentLevel, $level);
