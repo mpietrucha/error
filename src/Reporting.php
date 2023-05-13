@@ -90,8 +90,6 @@ class Reporting
         $this->set($this->builder);
 
         $this->handler?->register($this->builder);
-
-        $this->propagateError();
     }
 
     protected function set(int $level): void
