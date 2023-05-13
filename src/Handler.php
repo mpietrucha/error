@@ -1,57 +1,77 @@
 <?php
 
-namespace Mpietrucha\Error;
+namespace Mpietrucha\Support;
 
+use Mpietrucha\Cli\Cli;
+use Mpietrucha\Cli\Package;
+use Illuminate\Support\Collection;
 use Mpietrucha\Support\Concerns\HasFactory;
+use Whoops\Run as Provider;
+use Whoops\Handler\HandlerInterface;
+use NunoMaduro\Collision\Handler as CliHandler;
+use Whoops\Handler\PrettyPageHandler as WebHandler;
 
 class Handler
 {
     use HasFactory;
 
-    protected ?string $bag = null;
+    protected static ?Provider $provider = null;
 
-    protected bool $bypass = false;
+    protected static ?Collection $handlers = null;
 
-    protected bool $shouldRestore = false;
-
-    public function __construct(protected int $level = E_ALL)
+    public function __construct()
     {
-        $this->register($level);
+        Package::enshure(Cli::class, 'mpietrucha/cli');
     }
 
-    public function bypass(): self
+    public static function handlers(): Collection
     {
-        $this->bypass = true;
-
-        return $this;
+        return self::$handlers ??= collect();
     }
 
-    public function bag(?string $bag = null): self
+    public function register(): Provider
     {
-        $this->bag = $bag;
+        $this->web();
 
-        return $this;
+        $this->cli();
+
+        return self::$provider;
     }
 
-    public function register(int $level): void
+    public function __destruct()
     {
-        $this->restore();
-
-        set_error_handler(function () {
-            Error::add(func_get_args(), $this->bag);
-
-            return ! $this->bypass;
-        }, Resolver::create('without')->callback()($this->level, $level));
-
-        $this->shouldRestore = true;
-    }
-
-    public function restore(): void
-    {
-        if (! $this->shouldRestore) {
+        if (self::$provider) {
             return;
         }
 
-        restore_error_handler();
+        self::$provider = new Provider;
+
+        self::handlers()->each(function (HandlerInterface $handler) {
+            self::$provider->pushHandler($handler);
+        });
+
+        self::$provider->register();
+    }
+
+    public function web(): ?WebHandler
+    {
+        if (Cli::inside() | self::handlers()->has(WebHandler::class)) {
+            return self::handlers()->get(WebHandler::class);
+        }
+
+        self::handlers()->put(WebHandler::class, $handler = new WebHandler);
+
+        return $handler;
+    }
+
+    public function cli(): ?CliHandler
+    {
+        if (! Cli::inside() || self::handlers()->has(CliHandler::class)) {
+            return self::handlers()->get(CliHandler::class);
+        }
+
+        self::handlers()->put(CliHandler::class, $handler = new CliHandler);
+
+        return $handler;
     }
 }

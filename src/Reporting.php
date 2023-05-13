@@ -17,7 +17,7 @@ class Reporting
 
     protected int $builder;
 
-    protected Handler $handler;
+    protected RestorableHandler $handler;
 
     protected ?Stringable $phpVersion = null;
 
@@ -27,7 +27,7 @@ class Reporting
     {
         $this->origin = $this->builder = error_reporting();
 
-        $this->handler = Handler::create();
+        $this->handler = RestorableHandler::create();
     }
 
     public function __destruct()
