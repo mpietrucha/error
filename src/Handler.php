@@ -31,26 +31,24 @@ class Handler
 
     public function register(): Provider
     {
-        $this->web();
+        self::$provider ??= new Provider;
 
-        $this->cli();
+        if (! self::handlers()->count()) {
+            $this->web();
 
-        return self::$provider;
-    }
-
-    public function __destruct()
-    {
-        if (self::$provider) {
-            return;
+            $this->cli();
         }
-
-        self::$provider = new Provider;
 
         self::handlers()->each(function (HandlerInterface $handler) {
             self::$provider->pushHandler($handler);
         });
 
         self::$provider->register();
+    }
+
+    public function __destruct()
+    {
+        $this->register();
     }
 
     public function web(): ?WebHandler
