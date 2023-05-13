@@ -43,7 +43,7 @@ class Handler
             self::$provider->pushHandler($handler);
         });
 
-        self::$provider->register();
+        return self::$provider->register();
     }
 
     public function __destruct()
