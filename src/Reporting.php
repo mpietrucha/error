@@ -15,8 +15,6 @@ class Reporting
 
     protected int $builder;
 
-    protected ?string $bag = null;
-
     protected ?BufferedHandler $handler = null;
 
     public function __construct(protected ?string $version = null)
@@ -62,26 +60,27 @@ class Reporting
         return $this;
     }
 
-    public function withErrorBag(?string $bag = null): self
+    public function propagateDefaultError(bool $propagate = true): self
     {
-        $this->handler?->bag($this->bag = $bag);
+        $this->handler?->propagateDefault($propagate);
 
         return $this;
     }
 
-    public function while(Closure $callback, string $bag = null): mixed
+    public function withErrorBag(?string $bag = null): self
+    {
+        $this->handler?->bag($bag);
+
+        return $this;
+    }
+
+    public function while(Closure $callback): mixed
     {
         $this->commit();
-
-        $this->propagateError(false);
-
-        $this->handler?->bag($bag);
 
         $returnValue = $callback();
 
         $this->restore();
-
-        $this->withErrorBag($this->bag);
 
         return $returnValue;
     }

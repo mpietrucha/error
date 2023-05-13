@@ -18,6 +18,8 @@ class BufferedHandler
 
     protected bool $shouldRestore = false;
 
+    protected bool $propagateDefault = false;
+
     public function __construct(protected int $level = E_ALL)
     {
         $this->next = $this->next();
@@ -28,6 +30,13 @@ class BufferedHandler
     public function propagate(bool $propagate = true): self
     {
         $this->propagate = $propagate;
+
+        return $this;
+    }
+
+    public function propagateDefault(bool $propagate = true): self
+    {
+        $this->propagateDefault = $propagate;
 
         return $this;
     }
@@ -80,7 +89,7 @@ class BufferedHandler
             return value($this->next, ...$arguments);
         }
 
-        return true;
+        return $this->propagateDefault;
     }
 
     protected function shouldHandleThisError(int $level): bool
@@ -97,7 +106,7 @@ class BufferedHandler
         restore_error_handler();
 
         if (! $handler) {
-            return fn () => false;
+            return fn () => $this->propagateDefault;
         }
 
         if (Types::array($handler)) {
