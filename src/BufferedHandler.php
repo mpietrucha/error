@@ -8,22 +8,26 @@ class BufferedHandler
 {
     use HasFactory;
 
+    protected ?Closure $next;
+
     protected ?string $bag = null;
 
     protected bool $propagate = false;
 
     protected bool $shouldRestore = false;
 
-    protected const LEVEL_MODE = 'without';
-
     public function __construct(protected int $level = E_ALL)
     {
+        $this->next = set_error_handler(function () {});
+
+        restore_error_handler();
+
         $this->register($level);
     }
 
-    public function propagate(): self
+    public function propagate(bool $propagate = true): self
     {
-        $this->propagate = true;
+        $this->propagate = $propagate;
 
         return $this;
     }
@@ -39,7 +43,7 @@ class BufferedHandler
     {
         $this->restore();
 
-        set_error_handler($this->callback(...), $this->level($level));
+        set_error_handler($this->callback(...), ReportingLevelResolver::without($this->level, $level));
 
         $this->shouldRestore = true;
     }
@@ -57,13 +61,12 @@ class BufferedHandler
 
     protected function callback(): bool
     {
-        Error::add(func_get_args(), $this->bag);
+        Error::add($arguments = func_get_args(), $this->bag);
 
-        return ! $this->propagate;
-    }
+        if ($this->propagate) {
+            return value($this->next, ...$arguments) ?? false;
+        }
 
-    protected function level(int $level): int
-    {
-        return ReporingLevelResolver::create(self::LEVEL_MODE)->callback()($this->level, $level);
+        return true;
     }
 }

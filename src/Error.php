@@ -2,7 +2,6 @@
 
 namespace Mpietrucha\Error;
 
-use Exception;
 use Mpietrucha\Support\Macro;
 use Illuminate\Support\Collection;
 use Mpietrucha\Support\Concerns\HasFactory;
@@ -21,10 +20,6 @@ class Error
 
     public function __call(string $method, array $arguments): string|int
     {
-        if (count($arguments)) {
-            throw new Exception('Cannot pass arguments to error property');
-        }
-
         return $this->$method;
     }
 
