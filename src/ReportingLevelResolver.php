@@ -4,6 +4,7 @@ namespace Mpietrucha\Error;
 
 use Closure;
 use Exception;
+use Mpietrucha\Support\Caller;
 use Mpietrucha\Support\Types;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
