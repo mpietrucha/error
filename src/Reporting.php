@@ -23,7 +23,7 @@ class Reporting
 
     public function __construct(protected ?string $version = null)
     {
-        $this->handler = RestorableHandler::create(
+        $this->handler = BufferedHandler::create(
             $this->origin = $this->builder = error_reporting()
         );
 
