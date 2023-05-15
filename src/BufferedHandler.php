@@ -86,7 +86,7 @@ class BufferedHandler
         }
 
         if ($this->propagate) {
-            return value($this->next, ...$arguments);
+            return value($this->next, ...$arguments) ?? $this->propagateDefault;
         }
 
         return $this->propagateDefault;
