@@ -86,7 +86,7 @@ class BufferedHandler
         $arguments = func_get_args();
 
         if ($this->shouldHandleThisError(...$arguments)) {
-            Error::create(...$arguments);
+            Error::create(...$arguments)->bag($this->bag);
         }
 
         if ($this->propagate) {
