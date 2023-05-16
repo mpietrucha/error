@@ -49,7 +49,9 @@ class Error
 
     public function bag(?string $bag): self
     {
-        $this->bag = $bag;
+        if ($bag) {
+            $this->bag = $bag;
+        }
 
         return $this;
     }
