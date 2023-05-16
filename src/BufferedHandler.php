@@ -48,13 +48,17 @@ class BufferedHandler
         return $this;
     }
 
-    public function level(int $level): self
+    public function level(int $level, bool $shouldSetValue = false): self
     {
-        if ($level !== $this->level) {
-            $this->level = ReportingLevelResolver::without($this->level, $level);
+        $current = ReportingLevelResolver::without(E_ALL, $level);
+
+        if ($shouldSetValue || $level === 0 || $level === E_ALL) {
+            $this->level = $current;
+
+            return $this;
         }
 
-        return $this;
+        return $this->level($current, true);
     }
 
     public function register(int $level): void
@@ -82,7 +86,7 @@ class BufferedHandler
         $arguments = func_get_args();
 
         if ($this->shouldHandleThisError(...$arguments)) {
-            Error::add($arguments, $this->bag);
+            Error::create(...$arguments);
         }
 
         if ($this->propagate) {
@@ -94,7 +98,7 @@ class BufferedHandler
 
     protected function shouldHandleThisError(int $level): bool
     {
-        return $level >= $this->level;
+        return $this->level > $level;
     }
 
     protected function next(): Closure

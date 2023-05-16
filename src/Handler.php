@@ -19,11 +19,6 @@ class Handler
 
     protected static ?Collection $handlers = null;
 
-    public function __construct()
-    {
-        Package::enshure(Cli::class, 'mpietrucha/cli');
-    }
-
     public function __destruct()
     {
         $this->register();
@@ -67,7 +62,7 @@ class Handler
 
     public function web(): ?WebHandler
     {
-        if (Cli::inside()) {
+        if ($this->runningInConsole()) {
             return null;
         }
 
@@ -76,10 +71,17 @@ class Handler
 
     public function cli(): ?CliHandler
     {
-        if (! Cli::inside()) {
+        if (! $this->runningInConsole()) {
             return null;
         }
 
         return self::handler(new CliHandler, 'cli');
+    }
+
+    protected function runningInConsole(): bool
+    {
+        Package::enshure(Cli::class, 'mpietrucha/cli');
+
+        return Cli::inside();
     }
 }
