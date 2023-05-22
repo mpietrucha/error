@@ -2,86 +2,157 @@
 
 namespace Mpietrucha\Error;
 
-use Mpietrucha\Cli\Cli;
-use Mpietrucha\Support\Package;
+use Closure;
+use Throwable;
+use Whoops\Run;
+use Whoops\RunInterface;
+use Psr\Log\LoggerInterface;
+use Mpietrucha\Support\Macro;
+use Mpietrucha\Error\Enum\Type;
+use Mpietrucha\Support\Pipeline;
 use Illuminate\Support\Collection;
-use Mpietrucha\Support\Concerns\HasFactory;
-use Whoops\Run as Provider;
 use Whoops\Handler\HandlerInterface;
-use NunoMaduro\Collision\Handler as CliHandler;
-use Whoops\Handler\PrettyPageHandler as WebHandler;
+use Mpietrucha\Support\Concerns\HasFactory;
+use Mpietrucha\Error\Contracts\BuilderInterface;
+use Mpietrucha\Repository\Concerns\Repositoryable;
+use Mpietrucha\Repository\Contracts\RepositoryInterface;
 
 class Handler
 {
     use HasFactory;
 
-    protected static ?Provider $provider = null;
+    use Repositoryable;
 
-    protected static ?Collection $handlers = null;
+    protected ?Closure $error = null;
 
-    public function __destruct()
+    protected ?Closure $exception = null;
+
+    public function __construct()
     {
-        $this->register();
-    }
+        $this->withRepository(new Repository\Handler);
 
-    public static function handlers(): Collection
-    {
-        return self::$handlers ??= collect();
-    }
+        Macro::bootstrap();
 
-    public function handler(HandlerInterface $handler, ?string $key = null): HandlerInterface
-    {
-        if (! self::handlers()->has($handler::class)) {
-            self::handlers()->put($key ?? $handler::class, $handler);
+        if ($this->currentRepositoryIsStatic()) {
+            return;
         }
 
-        return $handler;
+        $this->captureDefault();
     }
 
-    public static function provider(): Provider
+    public function handlers(?Closure $handler = null): Collection
     {
-        return self::$provider ??= new Provider;
+        $handlers = $this->repositoryValuesCollection($handler ?? function (RepositoryInterface $repository) {
+            return $repository->handlers;
+        })->filter->count()->first();
+
+        return $handlers?->get($this->type()->value) ?? collect();
     }
 
-    public function register(): Provider
+    public function whoopsHandlers(): Collection
     {
-        self::provider()->clearHandlers();
+        $handlers = $this->handlers(fn (RepositoryInterface $repository) => $repository->whoopsHandlers);
 
-        if (! self::handlers()->count()) {
-            $this->web();
-
-            $this->cli();
+        if ($handlers->count()) {
+            return $handlers;
         }
 
-        self::handlers()->each(function (HandlerInterface $handler) {
-            self::provider()->pushHandler($handler);
+        if ($this->exception && $this->usingCapturedException()) {
+            return $this->useCapturedException(false)->usingWhoopsUnsafeHandler($this->exception, $this->type())->whoopsHandlers();
+        }
+
+        return $this->usingWhoopsHandler($this->type()->handler(), $this->type())->whoopsHandlers();
+    }
+
+    public function register(): self
+    {
+        $this->restoreWhoops();
+
+        $this->whoopsHandlers()->each(function (Closure|HandlerInterface $handler) {
+            $this->whoops()->pushHandler($handler);
         });
 
-        return self::provider()->register();
+        $this->whoops()->register();
+
+        $this->run();
+
+        return $this;
     }
 
-    public function web(): ?WebHandler
+    public function restore(): self
     {
-        if ($this->runningInConsole()) {
-            return null;
-        }
+        $this->restoreWhoops();
+        $this->restoreDefault();
 
-        return self::handler(new WebHandler, 'web');
+        return $this;
     }
 
-    public function cli(): ?CliHandler
+    protected function whoops(): RunInterface
     {
-        if (! $this->runningInConsole()) {
-            return null;
-        }
-
-        return self::handler(new CliHandler, 'cli');
+        return $this->repositoryValue(fn (RepositoryInterface $repository) => $repository->whoops, function () {
+            return $this->usingWhoops(new Run);
+        });
     }
 
-    protected function runningInConsole(): bool
+    protected function captureDefault(): void
     {
-        Package::enshure(Cli::class, 'mpietrucha/cli');
+        $this->error = System\Error::getThenRestoreDefault();
 
-        return Cli::inside();
+        $this->exception = System\Exception::getThenRestoreDefault();
+    }
+
+    protected function restoreDefault(): void
+    {
+        System\Error::set($this->error);
+
+        System\Exception::set($this->exception);
+    }
+
+    protected function restoreWhoops(): void
+    {
+        $this->whoops()->unregister()->clearHandlers();
+    }
+
+    protected function usingCapturedException(): bool
+    {
+        return $this->repositoryValuesCollection(function (RepositoryInterface $repository) {
+            return $repository->useCapturedException;
+        })->filterNulls()->first(default: true);
+    }
+
+    protected function type(): Type
+    {
+        return $this->repositoryValue(fn (RepositoryInterface $repository) => $repository->type, function () {
+            return $this->usingType(Type::createFromEnvironment());
+        });
+    }
+
+    protected function logger(): LoggerInterface
+    {
+        return $this->repositoryValue(fn (RepositoryInterface $repository) => $repository->logger, function () {
+            return $this->usingLogger(Repository\Logger::get());
+        });
+    }
+
+    protected function builder(): BuilderInterface
+    {
+        return $this->repositoryValue(fn (RepositoryInterface $repository) => $repository->builder, function () {
+            return $this->usingBuilder(new Builder);
+        });
+    }
+
+    protected function run(): void
+    {
+        $handler = System\Exception::get();
+
+        System\Exception::set(function (Throwable $exception) use ($handler) {
+            $builder = $this->builder()->setException($exception)->setHandler($handler);
+
+            Pipeline::create()
+                ->send($builder)
+                ->through($this->handlers()->toArray())
+                ->thenReturn()
+                ->build();
+        });
     }
 }

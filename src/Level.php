@@ -3,13 +3,14 @@
 namespace Mpietrucha\Error;
 
 use Closure;
-use Exception;
-use Mpietrucha\Support\Caller;
-use Mpietrucha\Support\Types;
+use Mpietrucha\Exception\BadMethodCallException;
+use Mpietrucha\Exception\InvalidArgumentException;
 use Illuminate\Support\Arr;
+use Mpietrucha\Support\Types;
+use Mpietrucha\Support\Caller;
 use Illuminate\Support\Collection;
 
-class ReportingLevelResolver
+class Level
 {
     protected static ?Collection $operators = null;
 
@@ -51,11 +52,11 @@ class ReportingLevelResolver
         );
 
         if (! Types::int($level)) {
-            throw new Exception("Method $method not found");
+            throw new BadMethodCallException('Method', [$method], 'not found');
         }
 
         if (Types::null($currentLevel)) {
-            throw new Exception('Invalid level argument');
+            throw new InvalidArgumentException('Invalid level argument');
         }
 
         return $handler($currentLevel, $level);

@@ -22,9 +22,13 @@
         "php": "^8.1",
         "mpietrucha/support": "^1.0",
         "illuminate/support": "^10.7",
-        "mpietrucha/laravel-macros": "^1.0",
+        "mpietrucha/macros": "^1.0",
         "nunomaduro/collision": "^7.5",
-        "filp/whoops": "^2.15"
+        "filp/whoops": "^2.15",
+        "spatie/ignition": "^1.7",
+        "symfony/error-handler": "^6.2",
+        "psr/log": "^3.0",
+        "mpietrucha/repository": "^1.0"
     },
     "require-dev": {
         "symfony/var-dumper": "^6.2"

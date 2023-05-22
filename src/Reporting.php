@@ -3,29 +3,27 @@
 namespace Mpietrucha\Error;
 
 use Closure;
-use Mpietrucha\Support\Macro;
-use Illuminate\Support\Collection;
+use Mpietrucha\Error\Concerns\Errorable;
+use Mpietrucha\Error\Repository\Error;
 use Mpietrucha\Support\Concerns\HasFactory;
 
 class Reporting
 {
+    use Errorable;
+
     use HasFactory;
 
-    protected int $origin;
+    protected int $level;
 
-    protected int $builder;
-
-    protected ?BufferedHandler $handler = null;
+    protected ?Closure $error = null;
 
     public function __construct(protected ?string $version = null)
     {
-        $this->handler = BufferedHandler::create(
-            $this->origin = $this->builder = error_reporting()
-        );
+        $this->level(System\Reporting::get());
 
-        $this->propagateError();
+        $this->error = System\Error::get();
 
-        Macro::bootstrap();
+        System\Error::set($this->handle(...));
     }
 
     public function __destruct()
@@ -35,71 +33,36 @@ class Reporting
 
     public function __call(string $method, array $arguments): self
     {
-        $level = ReportingLevelResolver::$method($this->builder);
-
         if ($this->shouldRunInThisPHPVersion()) {
-            $this->builder = $level;
+            $level = Level::$method($this->level);
+
+            $this->level($level);
         }
 
         return $this;
     }
 
-    public function withoutErrorHandler(): self
+    public function level(int $level): self
     {
-        $this->handler?->restore();
-
-        $this->handler = null;
+        $this->level = $level;
 
         return $this;
     }
 
-    public function propagateError(bool $propagate = true): self
+    public function while(Closure $callback)
     {
-        $this->handler?->propagate($propagate);
+        $level = System\Reporting::get();
 
-        return $this;
-    }
-
-    public function propagateDefaultError(bool $propagate = true): self
-    {
-        $this->handler?->propagateDefault($propagate);
-
-        return $this;
-    }
-
-    public function withErrorBag(?string $bag = null): self
-    {
-        $this->handler?->bag($bag);
-
-        return $this;
-    }
-
-    public function while(Closure $callback): mixed
-    {
         $this->commit();
 
-        $returnValue = $callback();
+        $callback();
 
-        $this->restore();
-
-        return $returnValue;
+        $this->level($level)->commit();
     }
 
     public function commit(): void
     {
-        $this->set($this->builder);
-
-        $this->handler?->register($this->builder);
-    }
-
-    protected function set(int $level): void
-    {
-        error_reporting($level);
-    }
-
-    protected function restore(): void
-    {
-        $this->builder = $this->origin;
+        System\Reporting::set($this->level);
     }
 
     protected function shouldRunInThisPHPVersion(): bool
@@ -109,5 +72,22 @@ class Reporting
         }
 
         return str()->php()->is($this->version);
+    }
+
+    protected function handle(int $level, string $error, string $file, int $line): bool
+    {
+        $handling = $level & $this->level;
+
+        if ($handling === 0) {
+            $this->createError($level, $error, $file, $line);
+
+            return true;
+        }
+
+        if ($this->error) {
+            return value($this->error, $level, $error, $file, $line);
+        }
+
+        return false;
     }
 }
