@@ -4,32 +4,29 @@ namespace Mpietrucha\Error;
 
 use Closure;
 use Throwable;
+use Psr\Log\LoggerInterface;
 use Mpietrucha\Error\Contracts\BuilderInterface;
 
 class Builder implements BuilderInterface
 {
     protected Closure $handler;
 
-    protected ?Throwable $current = null;
+    protected LoggerInterface $logger;
 
-    protected ?Throwable $original = null;
+    protected ?Throwable $exception = null;
 
     protected bool $shouldRunHandler = true;
 
     public function setException(Throwable $exception): self
     {
-        $this->current = $exception;
-
-        if (! $this->original) {
-            $this->original = $exception;
-        }
+        $this->exception = $exception;
 
         return $this;
     }
 
     public function getException(): Throwable
     {
-        return $this->original;
+        return $this->exception;
     }
 
     public function setHandler(Closure $handler): self
@@ -42,6 +39,18 @@ class Builder implements BuilderInterface
     public function getHandler(): Closure
     {
         return $this->handler;
+    }
+
+    public function setLogger(LoggerInterface $logger): self
+    {
+        $this->logger = $logger;
+
+        return $this;
+    }
+
+    public function getLogger(): LoggerInterface
+    {
+        return $this->logger;
     }
 
     public function quiet(): self

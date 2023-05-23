@@ -14,6 +14,10 @@ abstract class System implements SystemInterface, SystemHandlerInterface
 
     public static function set(?Closure $value = null): null|array|Closure
     {
+        if (! $value) {
+            return null;
+        }
+
         return static::setUsing()($value);
     }
 

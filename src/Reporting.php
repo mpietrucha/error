@@ -3,9 +3,14 @@
 namespace Mpietrucha\Error;
 
 use Closure;
+use Mpietrucha\Error\Level;
+use Mpietrucha\Support\Rescue;
+use Mpietrucha\Error\Repository;
 use Mpietrucha\Error\Concerns\Errorable;
-use Mpietrucha\Error\Repository\Error;
+use Mpietrucha\Error\Concerns\Loggerable;
 use Mpietrucha\Support\Concerns\HasFactory;
+use Mpietrucha\Repository\Concerns\Repositoryable;
+use Mpietrucha\Repository\Contracts\RepositoryInterface;
 
 class Reporting
 {
@@ -13,12 +18,26 @@ class Reporting
 
     use HasFactory;
 
-    protected int $level;
+    use Loggerable;
+
+    use Repositoryable {
+        __call as repositoryCall;
+    }
+
+    protected ?int $level = null;
 
     protected ?Closure $error = null;
 
+    protected ?Handler $handler = null;
+
     public function __construct(protected ?string $version = null)
     {
+        $this->withRepository(new Repository\Handler)->repositoryMethod('usingLogger');
+
+        if ($this->currentRepositoryIsStatic()) {
+            return;
+        }
+
         $this->level(System\Reporting::get());
 
         $this->error = System\Error::get();
@@ -28,39 +47,50 @@ class Reporting
 
     public function __destruct()
     {
-        $this->commit();
+        $this->register();
     }
 
     public function __call(string $method, array $arguments): self
     {
-        if ($this->shouldRunInThisPHPVersion()) {
-            $level = Level::$method($this->level);
+        Rescue::create(fn () => $this->repositoryCall($method, $arguments))
+            ->fail(fn () => $this->level(Level::$method($this->level)))
+            ->call();
 
-            $this->level($level);
-        }
+        return $this;
+    }
+
+    public function withErrorHandler(): self
+    {
+        $this->handler = Handler::create()->register();
 
         return $this;
     }
 
     public function level(int $level): self
     {
-        $this->level = $level;
+        if ($this->shouldRunInThisPHPVersion()) {
+            $this->level = $level;
+        }
 
         return $this;
     }
 
-    public function while(Closure $callback)
+    public function while(Closure $callback): mixed
     {
         $level = System\Reporting::get();
 
-        $this->commit();
+        $this->register();
 
-        $callback();
+        $response = $callback();
 
-        $this->level($level)->commit();
+        $this->level($level)->register();
+
+        $this->handler?->restore();
+
+        return $response;
     }
 
-    public function commit(): void
+    public function register(): void
     {
         System\Reporting::set($this->level);
     }
@@ -79,7 +109,7 @@ class Reporting
         $handling = $level & $this->level;
 
         if ($handling === 0) {
-            $this->createError($level, $error, $file, $line);
+            $this->log($level, $error)->createError($level, $error, $file, $line);
 
             return true;
         }

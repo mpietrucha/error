@@ -6,12 +6,12 @@ use Closure;
 use Throwable;
 use Whoops\Run;
 use Whoops\RunInterface;
-use Psr\Log\LoggerInterface;
 use Mpietrucha\Support\Macro;
 use Mpietrucha\Error\Enum\Type;
 use Mpietrucha\Support\Pipeline;
 use Illuminate\Support\Collection;
 use Whoops\Handler\HandlerInterface;
+use Mpietrucha\Error\Concerns\Loggerable;
 use Mpietrucha\Support\Concerns\HasFactory;
 use Mpietrucha\Error\Contracts\BuilderInterface;
 use Mpietrucha\Repository\Concerns\Repositoryable;
@@ -20,6 +20,8 @@ use Mpietrucha\Repository\Contracts\RepositoryInterface;
 class Handler
 {
     use HasFactory;
+
+    use Loggerable;
 
     use Repositoryable;
 
@@ -57,8 +59,8 @@ class Handler
             return $handlers;
         }
 
-        if ($this->exception && $this->usingCapturedException()) {
-            return $this->useCapturedException(false)->usingWhoopsUnsafeHandler($this->exception, $this->type())->whoopsHandlers();
+        if ($this->exception && $this->capturedException()) {
+            return $this->usingCapturedException(false)->usingWhoopsUnsafeHandler($this->exception, $this->type())->whoopsHandlers();
         }
 
         return $this->usingWhoopsHandler($this->type()->handler(), $this->type())->whoopsHandlers();
@@ -113,10 +115,10 @@ class Handler
         $this->whoops()->unregister()->clearHandlers();
     }
 
-    protected function usingCapturedException(): bool
+    protected function capturedException(): bool
     {
         return $this->repositoryValuesCollection(function (RepositoryInterface $repository) {
-            return $repository->useCapturedException;
+            return $repository->usingCapturedException;
         })->filterNulls()->first(default: true);
     }
 
@@ -124,13 +126,6 @@ class Handler
     {
         return $this->repositoryValue(fn (RepositoryInterface $repository) => $repository->type, function () {
             return $this->usingType(Type::createFromEnvironment());
-        });
-    }
-
-    protected function logger(): LoggerInterface
-    {
-        return $this->repositoryValue(fn (RepositoryInterface $repository) => $repository->logger, function () {
-            return $this->usingLogger(Repository\Logger::get());
         });
     }
 
@@ -146,13 +141,13 @@ class Handler
         $handler = System\Exception::get();
 
         System\Exception::set(function (Throwable $exception) use ($handler) {
-            $builder = $this->builder()->setException($exception)->setHandler($handler);
+            $this->builder()->setLogger($this->logger())->setException($exception)->setHandler($handler);
 
-            Pipeline::create()
-                ->send($builder)
-                ->through($this->handlers()->toArray())
-                ->thenReturn()
-                ->build();
+            Pipeline::create()->send($this->builder())->through($this->handlers()->toArray())->thenReturn();
+
+            $this->log($this->builder()->getException()->getCode(), $this->builder()->getException()->getMessage());
+
+            $this->builder()->build();
         });
     }
 }

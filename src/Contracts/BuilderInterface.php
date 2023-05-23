@@ -4,6 +4,7 @@ namespace Mpietrucha\Error\Contracts;
 
 use Closure;
 use Throwable;
+use Psr\Log\LoggerInterface;
 
 interface BuilderInterface
 {
@@ -14,6 +15,10 @@ interface BuilderInterface
     public function setHandler(Closure $handler): self;
 
     public function getHandler(): Closure;
+
+    public function setLogger(LoggerInterface $logger): self;
+
+    public function getLogger(): LoggerInterface;
 
     public function quiet(): self;
 

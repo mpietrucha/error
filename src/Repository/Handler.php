@@ -13,6 +13,8 @@ use Mpietrucha\Error\Enum\Type;
 use Illuminate\Support\Collection;
 use Whoops\Handler\HandlerInterface;
 use Mpietrucha\Repository\Repository;
+use Mpietrucha\Support\Reflector;
+use Mpietrucha\Error\Handler as DefaultHandler;
 use Mpietrucha\Error\Handler\ClosureHandler;
 use Symfony\Component\ErrorHandler\ErrorHandler;
 use Whoops\Handler\Handler as WhoopsHandler;
@@ -31,7 +33,7 @@ class Handler extends Repository
 
     protected ?BuilderInterface $builder = null;
 
-    protected ?bool $useCapturedException = null;
+    protected ?bool $usingCapturedException = null;
 
     public function __construct(protected Collection $whoopsHandlers = new Collection, protected Collection $handlers = new Collection)
     {
@@ -48,7 +50,7 @@ class Handler extends Repository
         $this->builder = value($builder);
     }
 
-    public function usingLogger(Closure|LoggerInterface $logger): void
+    public function usingLogger(null|Closure|LoggerInterface $logger): void
     {
         $this->logger = value($logger);
     }
@@ -67,6 +69,37 @@ class Handler extends Repository
     public function usingProduction(bool|Closure $production): void
     {
         $this->production = value($production);
+    }
+
+    public function production(Closure $handler, ?bool $production = null): void
+    {
+        $production = $production ?? $this->production;
+
+        if (! $production) {
+            return;
+        }
+
+        $shouldPassInstance = Reflector::closure($handler)->getNumberOfParameters() === 1;
+
+        if (! $shouldPassInstance) {
+            $handler();
+
+            return;
+        }
+
+        $handler($instance = DefaultHandler::create());
+
+        $instance->register();
+    }
+
+    public function usingCapturedException(bool $mode = true): void
+    {
+        $this->usingCapturedException = $mode;
+    }
+
+    public function usingDefaultHandler(): void
+    {
+        $this->usingCapturedException(false);
     }
 
     public function usingHandler(string|Closure|HandlerInterface|ExceptionHandlerInterface $handler, ?Type $type = null): void
@@ -157,15 +190,5 @@ class Handler extends Repository
         $this->usingWhoopsUnsafeSystemHandler(function () use ($theme) {
             return Ignition::make()->setTheme($theme)->register();
         }, Type::WEB);
-    }
-
-    public function useCapturedException(bool $mode = true): void
-    {
-        $this->useCapturedException = $mode;
-    }
-
-    public function useDefaultHandler(): void
-    {
-        $this->useCapturedException(false);
     }
 }
