@@ -7,18 +7,22 @@ use Mpietrucha\Support\Reflector;
 
 trait Creators
 {
-    public static function build(?Closure $handler = null, ?self $instance = null)
+    public static function build(?Closure $handler = null, ?self $instance = null): ?self
     {
-        $shouldPassInstance = Reflector::closure($handler)->getNumberOfParameters() === 1;
+        if (! $handler) {
+            return $instance ?? self::create();
+        }
+
+        $shouldPassInstance = Reflector::closure($handler)?->getNumberOfParameters() === 1;
 
         if (! $shouldPassInstance) {
             $handler();
 
-            return;
+            return null;
         }
 
         $handler($instance ??= self::create());
 
-        $instance->register();
+        return $instance->register();
     }
 }
