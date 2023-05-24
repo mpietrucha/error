@@ -9,11 +9,15 @@ trait Creators
 {
     public static function build(?Closure $handler = null, ?self $instance = null): ?self
     {
-        if (! $handler) {
-            return $instance ?? self::create();
+        $shouldPassInstance = Reflector::closure($handler)?->getNumberOfParameters() === 1;
+
+        if (! $handler || $shouldPassInstance) {
+            $instance ??= self::create();
         }
 
-        $shouldPassInstance = Reflector::closure($handler)?->getNumberOfParameters() === 1;
+        if (! $handler) {
+            return $instance->register();
+        }
 
         if (! $shouldPassInstance) {
             $handler();
@@ -21,7 +25,7 @@ trait Creators
             return null;
         }
 
-        $handler($instance ??= self::create());
+        $handler($instance);
 
         return $instance->register();
     }
