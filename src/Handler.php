@@ -12,6 +12,7 @@ use Mpietrucha\Support\Pipeline;
 use Illuminate\Support\Collection;
 use Whoops\Handler\HandlerInterface;
 use Mpietrucha\Error\Concerns\Loggerable;
+use Mpietrucha\Error\Concerns\Creators;
 use Mpietrucha\Support\Concerns\HasFactory;
 use Mpietrucha\Error\Contracts\BuilderInterface;
 use Mpietrucha\Repository\Concerns\Repositoryable;
@@ -19,6 +20,8 @@ use Mpietrucha\Repository\Contracts\RepositoryInterface;
 
 class Handler
 {
+    use Creators;
+
     use HasFactory;
 
     use Loggerable;
@@ -35,7 +38,7 @@ class Handler
 
         Macro::bootstrap();
 
-        if ($this->currentRepositoryIsStatic()) {
+        if ($this->getRepository()->static()) {
             return;
         }
 
@@ -44,7 +47,7 @@ class Handler
 
     public function handlers(?Closure $handler = null): Collection
     {
-        $handlers = $this->repositoryValuesCollection($handler ?? function (RepositoryInterface $repository) {
+        $handlers = $this->getRepository()->collection($handler ?? function (RepositoryInterface $repository) {
             return $repository->handlers;
         })->filter->count()->first();
 
@@ -91,7 +94,7 @@ class Handler
 
     protected function whoops(): RunInterface
     {
-        return $this->repositoryValue(fn (RepositoryInterface $repository) => $repository->whoops, function () {
+        return $this->getRepository()->value(fn (RepositoryInterface $repository) => $repository->whoops, function () {
             return $this->usingWhoops(new Run);
         });
     }
@@ -117,21 +120,21 @@ class Handler
 
     protected function capturedException(): bool
     {
-        return $this->repositoryValuesCollection(function (RepositoryInterface $repository) {
-            return $repository->usingCapturedException;
-        })->filterNulls()->first(default: true);
+        return $this->getRepository()->collection(function (RepositoryInterface $repository) {
+             return $repository->usingCapturedException;
+        })->first() ?? true;
     }
 
     protected function type(): Type
     {
-        return $this->repositoryValue(fn (RepositoryInterface $repository) => $repository->type, function () {
+        return $this->getRepository()->value(fn (RepositoryInterface $repository) => $repository->type, function () {
             return $this->usingType(Type::createFromEnvironment());
         });
     }
 
     protected function builder(): BuilderInterface
     {
-        return $this->repositoryValue(fn (RepositoryInterface $repository) => $repository->builder, function () {
+        return $this->getRepository()->value(fn (RepositoryInterface $repository) => $repository->builder, function () {
             return $this->usingBuilder(new Builder);
         });
     }

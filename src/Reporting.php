@@ -32,9 +32,9 @@ class Reporting
 
     public function __construct(protected ?string $version = null)
     {
-        $this->withRepository(new Repository\Handler)->repositoryMethod('usingLogger');
+        $this->withRepository(new Repository\Handler)->withRepositoryMethod('usingLogger');
 
-        if ($this->currentRepositoryIsStatic()) {
+        if ($this->getRepository()->static()) {
             return;
         }
 

@@ -21,7 +21,7 @@ trait Loggerable
             'Logger can be used only if class uses', [Repositoryable::class], 'trait'
         ));
 
-        return $this->repositoryValue(fn (RepositoryInterface $repository) => $repository->logger, function () {
+        return $this->getRepository()->value(fn (RepositoryInterface $repository) => $repository->logger, function () {
             return $this->usingLogger(Repository\Logger::get());
         });
     }

@@ -13,7 +13,6 @@ use Mpietrucha\Error\Enum\Type;
 use Illuminate\Support\Collection;
 use Whoops\Handler\HandlerInterface;
 use Mpietrucha\Repository\Repository;
-use Mpietrucha\Support\Reflector;
 use Mpietrucha\Error\Handler as DefaultHandler;
 use Mpietrucha\Error\Handler\ClosureHandler;
 use Symfony\Component\ErrorHandler\ErrorHandler;
@@ -25,7 +24,7 @@ class Handler extends Repository
 {
     protected ?Type $type = null;
 
-    protected bool $production = false;
+    protected ?bool $production = null;
 
     protected ?RunInterface $whoops = null;
 
@@ -73,23 +72,13 @@ class Handler extends Repository
 
     public function production(Closure $handler, ?bool $production = null): void
     {
-        $production = $production ?? $this->production;
+        $production ??= $this->collection(fn (self $repository) => $repository->production)->first() ?? false;
 
         if (! $production) {
             return;
         }
 
-        $shouldPassInstance = Reflector::closure($handler)->getNumberOfParameters() === 1;
-
-        if (! $shouldPassInstance) {
-            $handler();
-
-            return;
-        }
-
-        $handler($instance = DefaultHandler::create());
-
-        $instance->register();
+        DefaultHandler::build($handler, $this->static() ? null : $this->getRepositoryable());
     }
 
     public function usingCapturedException(bool $mode = true): void
