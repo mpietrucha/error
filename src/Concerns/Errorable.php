@@ -8,17 +8,35 @@ use Mpietrucha\Exception\RuntimeException;
 
 trait Errorable
 {
+    protected ?string $errorableAs = null;
+
     protected static ?Collection $errors = null;
 
-    public static function errors(): Collection
+    protected static string $defaultErrorableAs = 'default';
+
+    public static function errors(?string $name = null): Collection
     {
-        return self::$errors ??= collect();
+        $errors = self::$errors ??= collect();
+
+        return $errors->get($name ?? self::$defaultErrorableAs, collect());
+    }
+
+    public static function defaultErrorableAs(string|Closure $name): void
+    {
+        self::$defaultErrorableAs = value($name, self::$defaultErrorableAs);
+    }
+
+    public function errorableAs(string $name): self
+    {
+        $this->errorableAs = $name;
+
+        return $this;
     }
 
     protected function createError(): void
     {
         $error = Error::create(...func_get_args());
 
-        self::errors()->push($error);
+        self::errors()->list($this->errorableAs ?? self::$defaultErrorableAs, $error);
     }
 }
