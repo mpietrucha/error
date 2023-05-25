@@ -3,6 +3,7 @@
 namespace Mpietrucha\Error;
 
 use Closure;
+use Throwable;
 use Mpietrucha\Error\Level;
 use Mpietrucha\Support\Rescue;
 use Mpietrucha\Error\Repository;
@@ -81,7 +82,9 @@ class Reporting
 
         $this->register();
 
-        $response = $callback();
+        $response = Rescue::create($callback)->fail(function (Throwable $exception) {
+            $this->handle($exception->getCode(), $exception->getMessage(), $exception->getFile(), $exception->getLine());
+        })->call();
 
         $this->level($level)->register();
 
