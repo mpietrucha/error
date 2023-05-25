@@ -16,14 +16,17 @@ trait Errorable
 
     public static function errors(?string $name = null): Collection
     {
-        $errors = self::$errors ??= collect();
-
-        return $errors->get($name ?? self::$defaultErrorableAs, collect());
+        return self::withDefaultErrors()->get($name ?? self::$defaultErrorableAs, collect());
     }
 
     public static function defaultErrorableAs(string|Closure $name): void
     {
         self::$defaultErrorableAs = value($name, self::$defaultErrorableAs);
+    }
+
+    protected static function withDefaultErrors(): Collection
+    {
+        return self::$errors ??= collect();
     }
 
     public function errorableAs(string $name): self
@@ -37,6 +40,6 @@ trait Errorable
     {
         $error = Error::create(...func_get_args());
 
-        self::errors()->list($this->errorableAs ?? self::$defaultErrorableAs, $error);
+        self::withDefaultErrors()->list($this->errorableAs ?? self::$defaultErrorableAs, $error);
     }
 }
