@@ -115,12 +115,14 @@ class Reporting
         $code = Condition::create()
             ->add(E_RECOVERABLE_ERROR, $exception instanceof Error)
             ->add(fn () => $exception->getSeverity(), $exception instanceof ErrorException)
-            ->add(E_RECOVERABLE_ERROR, collect($exceptions)->whereInstanceOf($exception::class)->first())
+            ->add(E_RECOVERABLE_ERROR, collect($exceptions)->first(fn (string $e) => class_extends($exception, $e)))
             ->resolve();
 
         throw_unless($code, $exception);
 
-        throw_unless($this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine()), $exception);
+        $this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine());
+
+        throw_unless($this->error, $exception);
     }
 
     protected function handle(int $level, string $error, string $file, int $line): bool
