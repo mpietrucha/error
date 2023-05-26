@@ -86,7 +86,7 @@ class Reporting
 
         $this->register();
 
-        $response = Rescue::create($callback)->fail(function (Throwable $exception) {
+        $response = Rescue::create($callback)->fail(function (Throwable $exception) use ($exceptions) {
             $code = Condition::create()
                 ->add(E_RECOVERABLE_ERROR, $exception instanceof Error)
                 ->add(fn () => $exception->getSeverity(), $exception instanceof ErrorException)
