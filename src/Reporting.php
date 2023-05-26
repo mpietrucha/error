@@ -6,6 +6,7 @@ use Error;
 use Closure;
 use Throwable;
 use ErrorException;
+use Illuminate\Support\Arr;
 use Mpietrucha\Error\Level;
 use Mpietrucha\Support\Rescue;
 use Mpietrucha\Error\Repository;
@@ -79,7 +80,7 @@ class Reporting
         return $this;
     }
 
-    public function while(Closure $callback): mixed
+    public function while(Closure $callback, array $exceptions = []): mixed
     {
         $level = System\Reporting::get();
 
@@ -91,11 +92,17 @@ class Reporting
                 ->add(fn () => $exception->getSeverity(), $exception instanceof ErrorException)
                 ->resolve();
 
+            if (collect($exceptions)->whereInstanceOf($exception::class)->first()) {
+                 $code = E_RECOVERABLE_ERROR;
+            }
+
             if (! $code) {
                 throw $exception;
             }
 
-            $this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine());
+            if (! $this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine())) {
+                throw $exception;
+            }
         })->call();
 
         $this->level($level)->register();
