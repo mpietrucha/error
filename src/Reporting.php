@@ -125,7 +125,7 @@ class Reporting
         }
 
         if (collect($exceptions)->first(fn (string $e) => $exception instanceof $e)) {
-            return $default
+            return $default;
         }
 
         return null;
