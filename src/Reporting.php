@@ -115,11 +115,8 @@ class Reporting
         $code = Condition::create()
             ->add(E_RECOVERABLE_ERROR, $exception instanceof Error)
             ->add(fn () => $exception->getSeverity(), $exception instanceof ErrorException)
+            ->add(E_RECOVERABLE_ERROR, collect($exceptions)->whereInstanceOf($exception::class)->first())
             ->resolve();
-
-        if (collect($exceptions)->whereInstanceOf($exception::class)->first()) {
-             $code = E_RECOVERABLE_ERROR;
-        }
 
         throw_unless($code, $exception);
 
