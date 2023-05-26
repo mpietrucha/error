@@ -2,11 +2,14 @@
 
 namespace Mpietrucha\Error;
 
+use Error;
 use Closure;
 use Throwable;
+use ErrorException;
 use Mpietrucha\Error\Level;
 use Mpietrucha\Support\Rescue;
 use Mpietrucha\Error\Repository;
+use Mpietrucha\Support\Condition;
 use Mpietrucha\Error\Concerns\Errorable;
 use Mpietrucha\Error\Concerns\Loggerable;
 use Mpietrucha\Support\Concerns\HasFactory;
@@ -83,7 +86,16 @@ class Reporting
         $this->register();
 
         $response = Rescue::create($callback)->fail(function (Throwable $exception) {
-            $this->handle($exception->getCode(), $exception->getMessage(), $exception->getFile(), $exception->getLine());
+            $code = Condition::create()
+                ->add(E_RECOVERABLE_ERROR, $exception instanceof Error)
+                ->add(fn () => $exception->getSeverity(), $exception instanceof ErrorException)
+                ->resolve();
+
+            if (! $code) {
+                throw $exception;
+            }
+
+            $this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine());
         })->call();
 
         $this->level($level)->register();
