@@ -6,7 +6,6 @@ use Error;
 use Closure;
 use Throwable;
 use ErrorException;
-use Illuminate\Support\Arr;
 use Mpietrucha\Error\Level;
 use Mpietrucha\Support\Rescue;
 use Mpietrucha\Error\Repository;
@@ -86,24 +85,9 @@ class Reporting
 
         $this->register();
 
-        $response = Rescue::create($callback)->fail(function (Throwable $exception) use ($exceptions) {
-            $code = Condition::create()
-                ->add(E_RECOVERABLE_ERROR, $exception instanceof Error)
-                ->add(fn () => $exception->getSeverity(), $exception instanceof ErrorException)
-                ->resolve();
-
-            if (collect($exceptions)->whereInstanceOf($exception::class)->first()) {
-                 $code = E_RECOVERABLE_ERROR;
-            }
-
-            if (! $code) {
-                throw $exception;
-            }
-
-            if (! $this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine())) {
-                throw $exception;
-            }
-        })->call();
+        $response = Rescue::create($callback)
+            ->fail(fn (Throwable $exception) => $this->handleException($exception, $exceptions))
+            ->call();
 
         $this->level($level)->register();
 
@@ -124,6 +108,22 @@ class Reporting
         }
 
         return str()->php()->is($this->version);
+    }
+
+    protected function handleException(Throwable $exception, array $exceptions): void
+    {
+        $code = Condition::create()
+            ->add(E_RECOVERABLE_ERROR, $exception instanceof Error)
+            ->add(fn () => $exception->getSeverity(), $exception instanceof ErrorException)
+            ->resolve();
+
+        if (collect($exceptions)->whereInstanceOf($exception::class)->first()) {
+             $code = E_RECOVERABLE_ERROR;
+        }
+
+        throw_unless($code, $exception);
+
+        throw_unless($this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine()), $exception);
     }
 
     protected function handle(int $level, string $error, string $file, int $line): bool
