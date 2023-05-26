@@ -85,9 +85,13 @@ class Reporting
 
         $this->register();
 
-        $response = Rescue::create($callback)
-            ->fail(fn (Throwable $exception) => $this->handleException($exception, $exceptions))
-            ->call();
+        $response = Rescue::create($callback)->fail(function (Throwable $exception) use ($exceptions) {
+            throw_unless($code = $this->toCode($exception, $exceptions));
+
+            $this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine());
+
+            throw_unless($this->error, $exception);
+        })->call();
 
         $this->level($level)->register();
 
@@ -110,19 +114,21 @@ class Reporting
         return str()->php()->is($this->version);
     }
 
-    protected function handleException(Throwable $exception, array $exceptions): void
+    protected function toCode(Throwable $exception, array $exceptions, int $default = E_RECOVERABLE_ERROR): ?int
     {
-        $code = Condition::create()
-            ->add(E_RECOVERABLE_ERROR, $exception instanceof Error)
-            ->add(fn () => $exception->getSeverity(), $exception instanceof ErrorException)
-            ->add(E_RECOVERABLE_ERROR, collect($exceptions)->first(fn (string $e) => $exception instanceof $e))
-            ->resolve();
+        if ($exception instanceof Error) {
+            return $default;
+        }
 
-        throw_unless($code, $exception);
+        if ($exception instanceof ErrorException) {
+            return $exception->getSeverity();
+        }
 
-        $this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine());
+        if (collect($exceptions)->first(fn (string $e) => $exception instanceof $e)) {
+            return $default
+        }
 
-        throw_unless($this->error, $exception);
+        return null;
     }
 
     protected function handle(int $level, string $error, string $file, int $line): bool
