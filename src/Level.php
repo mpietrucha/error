@@ -19,7 +19,7 @@ class Level
     protected const LEVELS = [
         'disable' => 0,
         'all' => E_ALL,
-        'error' = > E_ERROR
+        'error' => E_ERROR,
         'warning' => E_WARNING,
         'notice' => E_NOTICE,
         'core_error' => E_CORE_ERROR,
