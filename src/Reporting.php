@@ -88,9 +88,7 @@ class Reporting
         $response = Rescue::create($callback)->fail(function (Throwable $exception) use ($exceptions) {
             throw_unless($code = $this->toCode($exception, $exceptions));
 
-            $this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine());
-
-            throw_unless($this->error, $exception);
+            throw_unless($this->error && $this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine()), $exception);
         })->call();
 
         $this->level($level)->register();
