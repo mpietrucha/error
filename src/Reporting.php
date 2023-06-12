@@ -15,6 +15,7 @@ use Mpietrucha\Error\Concerns\Loggerable;
 use Mpietrucha\Support\Concerns\HasFactory;
 use Mpietrucha\Repository\Concerns\Repositoryable;
 use Mpietrucha\Repository\Contracts\RepositoryInterface;
+use Mpietrucha\Error\Concerns\InteractsWithErrorHandler;
 
 class Reporting
 {
@@ -28,11 +29,11 @@ class Reporting
         __call as repositoryCall;
     }
 
+    use InteractsWithErrorHandler;
+
     protected ?int $level = null;
 
     protected ?Closure $error = null;
-
-    protected ?Handler $handler = null;
 
     public function __construct(protected ?string $version = null)
     {
@@ -59,13 +60,6 @@ class Reporting
         Rescue::create(fn () => $this->repositoryCall($method, $arguments))
             ->fail(fn () => $this->level(Level::$method($this->level)))
             ->call();
-
-        return $this;
-    }
-
-    public function withErrorHandler(): self
-    {
-        $this->handler = Handler::create()->register();
 
         return $this;
     }
