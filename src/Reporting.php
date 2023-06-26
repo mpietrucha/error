@@ -6,15 +6,11 @@ use Error;
 use Closure;
 use Throwable;
 use ErrorException;
-use Mpietrucha\Error\Level;
 use Mpietrucha\Support\Rescue;
-use Mpietrucha\Error\Repository;
-use Mpietrucha\Support\Condition;
 use Mpietrucha\Error\Concerns\Errorable;
 use Mpietrucha\Error\Concerns\Loggerable;
 use Mpietrucha\Support\Concerns\HasFactory;
 use Mpietrucha\Repository\Concerns\Repositoryable;
-use Mpietrucha\Repository\Contracts\RepositoryInterface;
 use Mpietrucha\Error\Concerns\InteractsWithErrorHandler;
 
 class Reporting
@@ -33,7 +29,11 @@ class Reporting
 
     protected ?int $level = null;
 
+    protected bool $catch = false;
+
     protected ?Closure $error = null;
+
+    protected ?Throwable $exception = null;
 
     public function __construct(protected ?string $version = null)
     {
@@ -58,8 +58,9 @@ class Reporting
     public function __call(string $method, array $arguments): self
     {
         Rescue::create(fn () => $this->repositoryCall($method, $arguments))
-            ->fail(fn () => $this->level(Level::$method($this->level)))
-            ->call();
+            ->fail(fn () => $this->level(
+                Level::$method($this->level)
+            ))->call();
 
         return $this;
     }
@@ -73,19 +74,24 @@ class Reporting
         return $this;
     }
 
-    public function while(Closure $callback, array $exceptions = []): mixed
+    public function catch(bool $mode = true): self
+    {
+        $this->catch = $mode;
+
+        return $this;
+    }
+
+    public function while(Closure $callback): mixed
     {
         $level = System\Reporting::get();
 
         $this->register();
 
-        $response = Rescue::create($callback)->fail(function (Throwable $exception) use ($exceptions) {
-            throw_unless($code = $this->toCode($exception, $exceptions), $exception);
-
-            throw_unless($this->error && $this->handle($code, $exception->getMessage(), $exception->getFile(), $exception->getLine()), $exception);
-        })->call();
+        $response = Rescue::create($callback)->fail($this->catch(...))->call();
 
         $this->level($level)->register();
+
+        throw_if($this->exception, $this->exception);
 
         $this->handler?->restore();
 
@@ -106,7 +112,25 @@ class Reporting
         return str()->php()->is($this->version);
     }
 
-    protected function toCode(Throwable $exception, array $exceptions, int $default = E_RECOVERABLE_ERROR): ?int
+    protected function catch(Throwable $exception): void
+    {
+        if (! $code = $this->exceptionToCode($this->exception = $exception)) {
+            return;
+        }
+
+        if (! $this->handle(...$this->exceptionToError($exception, $code))) {
+            return;
+        }
+
+        $this->exception = null;
+    }
+
+    protected function exceptionToError(Throwable $exception, ?int $code = null): array
+    {
+        return [$code ?? $exception->getCode(), $exception->getMessage(), $exception->getFile(), $exception->getLine()];
+    }
+
+    protected function exceptionToCode(Throwable $exception, int $default = E_RECOVERABLE_ERROR): ?int
     {
         if ($exception instanceof Error) {
             return $default;
@@ -116,7 +140,7 @@ class Reporting
             return $exception->getSeverity();
         }
 
-        if (collect($exceptions)->first(fn (string $e) => $exception instanceof $e)) {
+        if ($this->catch) {
             return $default;
         }
 
