@@ -4,6 +4,7 @@ namespace Mpietrucha\Error\Repository;
 
 use Psr\Log\NullLogger;
 use Psr\Log\LoggerInterface;
+use Mpietrucha\Support\Rescue;
 use Illuminate\Support\Collection;
 
 class Logger
@@ -19,7 +20,7 @@ class Logger
             return null;
         }
 
-        $logger = logger();
+        $logger = Rescue::create(fn () => logger())->call();
 
         if (! $logger instanceof LoggerInterface) {
             return null;
