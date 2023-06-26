@@ -87,7 +87,7 @@ class Reporting
 
         $this->register();
 
-        $response = Rescue::create($callback)->fail($this->catch(...))->call();
+        $response = Rescue::create($callback)->fail($this->catchException(...))->call();
 
         $this->level($level)->register();
 
@@ -112,7 +112,7 @@ class Reporting
         return str()->php()->is($this->version);
     }
 
-    protected function catch(Throwable $exception): void
+    protected function catchException(Throwable $exception): void
     {
         if (! $code = $this->exceptionToCode($this->exception = $exception)) {
             return;
