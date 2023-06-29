@@ -93,7 +93,9 @@ class Reporting
 
         throw_if($this->exception, $this->exception);
 
-        $this->handler?->restore();
+        if (! $this->handler?->restore()) {
+            System\Error::restore();
+        }
 
         return $response;
     }
